@@ -32,6 +32,8 @@
     align-items: center;
     gap: 12px;
     padding: 8px 14px;
+    padding-left: 58px; /* מקום לכפתור גביש בפינה השמאלית */
+    min-height: 56px;
     border-bottom: 1px solid var(--line);
     background: var(--panel);
     flex: none;
@@ -175,6 +177,7 @@
 </style>
 </head>
 <body>
+<script>/* גביש: כפתור קבוע בפינה השמאלית העליונה, מבודד מה-CSS של הדף */(function(){if(document.getElementById("gavish-hub"))return;var h=document.createElement("div");h.id="gavish-hub";h.style.cssText="position:fixed!important;top:10px!important;left:10px!important;width:36px!important;height:36px!important;z-index:2147483000!important;margin:0!important;padding:0!important;display:block!important;transform:none!important;";var r=h.attachShadow({mode:"open"});r.innerHTML='<style>a{display:flex;align-items:center;justify-content:center;width:36px;height:36px;box-sizing:border-box;font-size:19px;line-height:1;text-decoration:none;background:rgba(15,31,61,.84);border:1px solid rgba(255,255,255,.32);border-radius:11px;box-shadow:0 4px 14px rgba(0,0,0,.3);font-family:sans-serif}a:hover{background:rgba(40,70,130,.95)}</style><a href="https://gavishori.github.io/" title="גביש - כל הפרויקטים" aria-label="גביש - כל הפרויקטים">💎</a>';document.body.insertBefore(h,document.body.firstChild)})();</script>
 <header>
   <h1>מצלמות הבית</h1>
   <button id="btn-settings">הגדרות</button>
