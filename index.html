@@ -163,7 +163,8 @@
     min-width: 0;
   }
   input[name=url] { direction: ltr; }
-  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+  fieldset.go2rtc-row { grid-template-columns: 1fr; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 6px; }
 
   @media (max-width: 760px) {
     body { overflow: auto; }
@@ -203,6 +204,10 @@
       ההגדרות נשמרות רק בדפדפן הזה.
     </p>
     <div id="fields"></div>
+    <fieldset class="go2rtc-row">
+      <legend>כתובת go2rtc — במחשב בבית: http://localhost:1984, בנייד: כתובת ה־Tailscale של המחשב</legend>
+      <input id="go2rtc-base" dir="ltr" placeholder="http://localhost:1984">
+    </fieldset>
     <div class="actions">
       <button type="button" id="btn-go2rtc">חיבור ל־go2rtc</button>
       <button type="button" id="btn-import" style="margin-inline-end:auto">ייבוא מסריקת רשת</button>
@@ -397,6 +402,7 @@ function openSettings() {
     fs.querySelector('[name=type]').value = cam.type;
     fields.appendChild(fs);
   });
+  document.getElementById('go2rtc-base').value = state.go2rtc || '';
   dlg.showModal();
 }
 
@@ -433,10 +439,13 @@ importFile.onchange = async () => {
   alert(msg + '\nבדקו את הכתובות ולחצו "שמירה".');
 };
 
-// go2rtc רץ על המחשב הזה וממיר את זרמי המצלמות (cam1..cam4 ב־go2rtc.yaml) לנגן בדפדפן
+// go2rtc רץ על המחשב בבית וממיר את זרמי המצלמות (cam1..cam4 ב־go2rtc.yaml) לנגן בדפדפן.
+// מחוץ לבית מגיעים אליו דרך Tailscale, לכן הכתובת ניתנת להגדרה בכל מכשיר
+const go2rtcBase = document.getElementById('go2rtc-base');
 document.getElementById('btn-go2rtc').onclick = () => {
+  const base = (go2rtcBase.value.trim() || 'http://localhost:1984').replace(/\/+$/, '');
   fields.querySelectorAll('fieldset').forEach((fs, i) => {
-    fs.querySelector('[name=url]').value = `http://localhost:1984/stream.html?src=cam${i + 1}&mode=mse`;
+    fs.querySelector('[name=url]').value = `${base}/stream.html?src=cam${i + 1}&mode=mse`;
     fs.querySelector('[name=type]').value = 'iframe';
   });
 };
@@ -447,6 +456,7 @@ document.getElementById('settings-form').addEventListener('submit', () => {
     url: fs.querySelector('[name=url]').value.trim(),
     type: fs.querySelector('[name=type]').value,
   }));
+  state.go2rtc = go2rtcBase.value.trim();
   save();
   renderAll();
 });
