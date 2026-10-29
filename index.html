@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מצלמות הבית</title>
+<style>
+  :root {
+    --bg: #0b0d10;
+    --panel: #14171c;
+    --line: #262b33;
+    --text: #e8eaed;
+    --muted: #8a919c;
+    --accent: #3ea6ff;
+    --live: #2ecc71;
+    --off: #e5534b;
+    --gap: 6px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
+    flex: none;
+  }
+  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+  #clock { margin-inline-start: auto; font-variant-numeric: tabular-nums; color: var(--muted); }
+  button {
+    background: #1f242c;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #001629; font-weight: 600; }
+
+  /* 40% משמאל למצלמה הראשית, 60% מימין מחולקים לשלוש */
+  main {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    direction: ltr;
+    grid-template-columns: 2fr 3fr;
+    gap: var(--gap);
+    padding: var(--gap);
+  }
+  #side {
+    display: grid;
+    grid-template-rows: repeat(3, 1fr);
+    gap: var(--gap);
+    min-height: 0;
+  }
+
+  .cam {
+    direction: rtl;
+    position: relative;
+    background: #000;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    min-height: 0;
+  }
+  .cam video, .cam img, .cam iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border: 0;
+    background: #000;
+  }
+  .cam .label {
+    position: absolute;
+    top: 8px;
+    inset-inline-start: 8px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,.6);
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .cam .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .cam.live .dot { background: var(--live); }
+  .cam.error .dot { background: var(--off); }
+  .cam .tools {
+    position: absolute;
+    top: 6px;
+    inset-inline-end: 6px;
+    z-index: 2;
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity .15s;
+  }
+  .cam:hover .tools { opacity: 1; }
+  .cam .tools button { padding: 3px 8px; font-size: 13px; background: rgba(0,0,0,.65); }
+  .cam .msg {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 16px;
+  }
+  #side .cam { cursor: pointer; }
+  #side .cam:hover { border-color: var(--accent); }
+
+  /* הגדרות */
+  dialog {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    width: min(640px, calc(100vw - 32px));
+    padding: 18px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.6); }
+  dialog h2 { margin: 0 0 4px; font-size: 18px; }
+  dialog .hint { color: var(--muted); font-size: 13px; margin: 0 0 14px; line-height: 1.5; }
+  fieldset {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 2fr 110px;
+    gap: 8px;
+  }
+  legend { color: var(--muted); font-size: 13px; padding: 0 4px; }
+  input, select {
+    background: #0e1115;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font: inherit;
+    font-size: 14px;
+    min-width: 0;
+  }
+  input[name=url] { direction: ltr; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
+
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    main { grid-template-columns: 1fr; grid-auto-rows: auto; }
+    #main-slot { aspect-ratio: 16 / 9; }
+    #side { grid-template-rows: none; }
+    #side .cam { aspect-ratio: 16 / 9; }
+    .cam .tools { opacity: 1; }
+    fieldset { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>מצלמות הבית</h1>
+  <button id="btn-settings">הגדרות</button>
+  <span id="clock"></span>
+</header>
+
+<main>
+  <div class="cam" id="main-slot"></div>
+  <div id="side">
+    <div class="cam" data-slot="1"></div>
+    <div class="cam" data-slot="2"></div>
+    <div class="cam" data-slot="3"></div>
+  </div>
+</main>
+
+<dialog id="settings">
+  <form method="dialog" id="settings-form">
+    <h2>הגדרת מצלמות</h2>
+    <p class="hint">
+      לכל מצלמה: שם וכתובת הזרם. נתמכים: HLS (<code>.m3u8</code>), MJPEG, תמונת Snapshot שמתרעננת כל שנייה,
+      וידאו (<code>.mp4</code>) או דף צפייה של המצלמה/NVR (מוטמע כ־iframe).
+      זרם RTSP לא נפתח ישירות בדפדפן — צריך להמיר אותו קודם (למשל עם go2rtc).
+      ההגדרות נשמרות רק בדפדפן הזה.
+    </p>
+    <div id="fields"></div>
+    <div class="actions">
+      <button type="button" id="btn-cancel">ביטול</button>
+      <button type="submit" class="primary">שמירה</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const STORE_KEY = 'home-cameras-v1';
+const TYPES = [
+  ['auto', 'זיהוי אוטומטי'],
+  ['hls', 'HLS'],
+  ['mjpeg', 'MJPEG'],
+  ['snapshot', 'Snapshot'],
+  ['video', 'וידאו'],
+  ['iframe', 'דף / iframe'],
+];
+
+const defaults = () => [1, 2, 3, 4].map(n => ({ name: 'מצלמה ' + n, url: '', type: 'auto' }));
+
+function load() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+    if (saved && Array.isArray(saved.cams) && saved.cams.length === 4) return saved;
+  } catch (e) {}
+  return { cams: defaults(), order: [0, 1, 2, 3] };
+}
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+let state = load();
+const cleanups = new Map(); // slot element -> cleanup function
+
+function detectType(url) {
+  const u = url.toLowerCase().split('?')[0];
+  if (u.endsWith('.m3u8')) return 'hls';
+  if (u.endsWith('.mp4') || u.endsWith('.webm')) return 'video';
+  if (/\.(jpe?g|png)$/.test(u) || /snapshot|snap\.|still/.test(url.toLowerCase())) return 'snapshot';
+  if (/mjpe?g|video\.cgi|stream\.cgi|faststream|action=stream/.test(url.toLowerCase())) return 'mjpeg';
+  return 'iframe';
+}
+
+let hlsLoading;
+function loadHls() {
+  if (window.Hls) return Promise.resolve(window.Hls);
+  hlsLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js';
+    s.onload = () => resolve(window.Hls);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  return hlsLoading;
+}
+
+function setStatus(el, status, text) {
+  el.classList.remove('live', 'error');
+  if (status) el.classList.add(status);
+  const msg = el.querySelector('.msg');
+  if (text) {
+    if (msg) msg.textContent = text;
+    else el.insertAdjacentHTML('beforeend', `<div class="msg"></div>`), el.querySelector('.msg').textContent = text;
+  } else if (msg) msg.remove();
+}
+
+function render(el, camIndex) {
+  cleanups.get(el)?.();
+  cleanups.delete(el);
+  el.innerHTML = '';
+  el.dataset.cam = camIndex;
+  const cam = state.cams[camIndex];
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.innerHTML = '<span class="dot"></span><span></span>';
+  label.lastChild.textContent = cam.name || 'מצלמה ' + (camIndex + 1);
+
+  const tools = document.createElement('div');
+  tools.className = 'tools';
+  tools.innerHTML = '<button data-act="reload" title="טעינה מחדש">⟳</button><button data-act="full" title="מסך מלא">⛶</button>';
+
+  if (!cam.url) {
+    el.append(label, tools);
+    setStatus(el, null, 'לא הוגדרה כתובת — לחצו על "הגדרות"');
+    return;
+  }
+
+  const type = cam.type === 'auto' ? detectType(cam.url) : cam.type;
+  let media;
+
+  if (type === 'hls' || type === 'video') {
+    media = document.createElement('video');
+    media.muted = true;
+    media.autoplay = true;
+    media.playsInline = true;
+    media.onplaying = () => setStatus(el, 'live');
+    media.onerror = () => setStatus(el, 'error', 'לא ניתן לנגן את הזרם');
+    if (type === 'video' || media.canPlayType('application/vnd.apple.mpegurl')) {
+      media.src = cam.url;
+    } else {
+      let hls;
+      loadHls().then(Hls => {
+        if (!el.contains(media)) return;
+        hls = new Hls({ liveDurationInfinity: true, lowLatencyMode: true });
+        hls.on(Hls.Events.ERROR, (_, d) => { if (d.fatal) setStatus(el, 'error', 'שגיאה בזרם HLS'); });
+        hls.loadSource(cam.url);
+        hls.attachMedia(media);
+      }).catch(() => setStatus(el, 'error', 'לא ניתן לטעון את נגן ה־HLS'));
+      cleanups.set(el, () => hls?.destroy());
+    }
+  } else if (type === 'mjpeg' || type === 'snapshot') {
+    media = document.createElement('img');
+    media.alt = '';
+    media.onload = () => setStatus(el, 'live');
+    media.onerror = () => setStatus(el, 'error', 'אין תמונה מהמצלמה');
+    const withStamp = () => cam.url + (cam.url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    media.src = type === 'snapshot' ? withStamp() : cam.url;
+    if (type === 'snapshot') {
+      const timer = setInterval(() => {
+        const next = new Image();
+        next.onload = () => { media.src = next.src; };
+        next.src = withStamp();
+      }, 1000);
+      cleanups.set(el, () => clearInterval(timer));
+    } else {
+      cleanups.set(el, () => { media.src = ''; });
+    }
+  } else {
+    media = document.createElement('iframe');
+    media.src = cam.url;
+    media.allow = 'autoplay; fullscreen';
+    media.onload = () => setStatus(el, 'live');
+  }
+
+  el.append(media, label, tools);
+}
+
+function renderAll() {
+  render(document.getElementById('main-slot'), state.order[0]);
+  document.querySelectorAll('#side .cam').forEach((el, i) => render(el, state.order[i + 1]));
+}
+
+// לחיצה על מצלמה קטנה מעבירה אותה לחצי הגדול
+document.querySelector('main').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  const slot = e.target.closest('.cam');
+  if (!slot) return;
+  if (btn) {
+    e.stopPropagation();
+    if (btn.dataset.act === 'reload') render(slot, Number(slot.dataset.cam));
+    if (btn.dataset.act === 'full') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else slot.requestFullscreen?.();
+    }
+    return;
+  }
+  if (slot.dataset.slot) {
+    const i = Number(slot.dataset.slot);
+    [state.order[0], state.order[i]] = [state.order[i], state.order[0]];
+    save();
+    render(document.getElementById('main-slot'), state.order[0]);
+    render(slot, state.order[i]);
+  }
+});
+
+document.querySelector('main').addEventListener('dblclick', e => {
+  const slot = e.target.closest('.cam');
+  if (!slot || e.target.closest('button')) return;
+  if (document.fullscreenElement) document.exitFullscreen();
+  else slot.requestFullscreen?.();
+});
+
+// הגדרות
+const dlg = document.getElementById('settings');
+const fields = document.getElementById('fields');
+
+function openSettings() {
+  fields.innerHTML = '';
+  state.cams.forEach((cam, i) => {
+    const fs = document.createElement('fieldset');
+    fs.innerHTML = `
+      <legend>מצלמה ${i + 1}</legend>
+      <input name="name" placeholder="שם (למשל: כניסה)">
+      <input name="url" placeholder="http://192.168.1.20/stream.m3u8">
+      <select name="type">${TYPES.map(([v, t]) => `<option value="${v}">${t}</option>`).join('')}</select>`;
+    fs.querySelector('[name=name]').value = cam.name;
+    fs.querySelector('[name=url]').value = cam.url;
+    fs.querySelector('[name=type]').value = cam.type;
+    fields.appendChild(fs);
+  });
+  dlg.showModal();
+}
+
+document.getElementById('btn-settings').onclick = openSettings;
+document.getElementById('btn-cancel').onclick = () => dlg.close();
+document.getElementById('settings-form').addEventListener('submit', () => {
+  state.cams = [...fields.querySelectorAll('fieldset')].map(fs => ({
+    name: fs.querySelector('[name=name]').value.trim(),
+    url: fs.querySelector('[name=url]').value.trim(),
+    type: fs.querySelector('[name=type]').value,
+  }));
+  save();
+  renderAll();
+});
+
+// שעון
+const clock = document.getElementById('clock');
+const tick = () => {
+  clock.textContent = new Date().toLocaleString('he-IL', {
+    weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  });
+};
+tick();
+setInterval(tick, 1000);
+
+renderAll();
+if (state.cams.every(c => !c.url)) openSettings();
+</script>
+</body>
+</html>
