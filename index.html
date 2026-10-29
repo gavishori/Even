@@ -201,6 +201,8 @@
     </p>
     <div id="fields"></div>
     <div class="actions">
+      <button type="button" id="btn-import" style="margin-inline-end:auto">ייבוא מסריקת רשת</button>
+      <input type="file" id="import-file" accept=".json" hidden>
       <button type="button" id="btn-cancel">ביטול</button>
       <button type="submit" class="primary">שמירה</button>
     </div>
@@ -396,6 +398,37 @@ function openSettings() {
 
 document.getElementById('btn-settings').onclick = openSettings;
 document.getElementById('btn-cancel').onclick = () => dlg.close();
+// ייבוא scan-results.json שנוצר ע"י scan-cameras.bat — ממלא את המצלמות הריקות
+const importFile = document.getElementById('import-file');
+const BRANDS = { hikvision: 'Hikvision', dahua: 'Dahua', reolink: 'Reolink', xmeye: 'XMEye' };
+document.getElementById('btn-import').onclick = () => importFile.click();
+importFile.onchange = async () => {
+  const file = importFile.files[0];
+  importFile.value = '';
+  if (!file) return;
+  let found;
+  try {
+    found = JSON.parse((await file.text()).replace(/^﻿/, '')).cameras || [];
+  } catch (e) {
+    alert('הקובץ אינו תוצאת סריקה תקינה');
+    return;
+  }
+  const sets = [...fields.querySelectorAll('fieldset')];
+  const known = new Set(sets.map(fs => fs.querySelector('[name=url]').value).filter(Boolean)
+    .map(u => u.match(/\/\/(?:[^@/]*@)?([^:/?]+)/)?.[1]));
+  const fresh = found.filter(c => !known.has(c.ip));
+  const empty = sets.filter(fs => !fs.querySelector('[name=url]').value.trim());
+  fresh.slice(0, empty.length).forEach((cam, i) => {
+    const fs = empty[i];
+    fs.querySelector('[name=name]').value = `${BRANDS[cam.brand] || 'מצלמה'} ${cam.ip}`;
+    fs.querySelector('[name=url]').value = cam.snapshot || `http://${cam.ip}/`;
+    fs.querySelector('[name=type]').value = cam.snapshot ? 'snapshot' : 'iframe';
+  });
+  let msg = `נמצאו ${found.length} מצלמות, ${Math.min(fresh.length, empty.length)} נוספו.`;
+  if (fresh.length > empty.length) msg += `\nלא נשאר מקום ל־${fresh.length - empty.length}: ` + fresh.slice(empty.length).map(c => c.ip).join(', ');
+  alert(msg + '\nבדקו את הכתובות ולחצו "שמירה".');
+};
+
 document.getElementById('settings-form').addEventListener('submit', () => {
   state.cams = [...fields.querySelectorAll('fieldset')].map(fs => ({
     name: fs.querySelector('[name=name]').value.trim(),
