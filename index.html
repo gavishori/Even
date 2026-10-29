@@ -85,6 +85,10 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
+  }
+  /* נגן go2rtc: הווידאו נמתח על כל המשבצת */
+  .cam cam-rtc { position: absolute; inset: 0; }
+  .cam cam-rtc video { object-fit: fill;
     border: 0;
     background: #000;
   }
@@ -254,6 +258,19 @@ function detectType(url) {
   return 'iframe';
 }
 
+let go2rtcLoading;
+function loadGo2rtc(base) {
+  go2rtcLoading ||= import(`${base}/video-rtc.js`).then(({ VideoRTC }) => {
+    customElements.define('cam-rtc', class extends VideoRTC {
+      oninit() {
+        super.oninit();
+        this.video.controls = false;
+      }
+    });
+  });
+  return go2rtcLoading;
+}
+
 let hlsLoading;
 function loadHls() {
   if (window.Hls) return Promise.resolve(window.Hls);
@@ -299,7 +316,10 @@ function render(el, camIndex) {
     return;
   }
 
-  const type = cam.type === 'auto' ? detectType(cam.url) : cam.type;
+  let type = cam.type === 'auto' ? detectType(cam.url) : cam.type;
+  // דף הנגן של go2rtc מוחלף בנגן שלו בתוך הדף עצמו, כדי שאפשר יהיה לעצב את הווידאו
+  const go2rtc = cam.url.match(/^(.*)\/stream\.html\?.*\bsrc=([^&]+)/);
+  if (go2rtc && type === 'iframe') type = 'go2rtc';
   let media;
 
   if (type === 'hls' || type === 'video') {
@@ -339,6 +359,18 @@ function render(el, camIndex) {
     } else {
       cleanups.set(el, () => { media.src = ''; });
     }
+  } else if (type === 'go2rtc') {
+    const [, base, src] = go2rtc;
+    media = document.createElement('div');
+    media.style.cssText = 'position:absolute;inset:0';
+    loadGo2rtc(base).then(() => {
+      if (!el.contains(media)) return;
+      const player = document.createElement('cam-rtc');
+      player.mode = 'mse,webrtc';
+      player.src = `${base}/api/ws?src=${src}`;
+      media.appendChild(player);
+      player.video.onplaying = () => setStatus(el, 'live');
+    }).catch(() => setStatus(el, 'error', 'אין חיבור ל־go2rtc — האם הוא פועל?'));
   } else {
     media = document.createElement('iframe');
     media.src = cam.url;
