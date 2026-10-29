@@ -201,6 +201,7 @@
     </p>
     <div id="fields"></div>
     <div class="actions">
+      <button type="button" id="btn-go2rtc">חיבור ל־go2rtc</button>
       <button type="button" id="btn-import" style="margin-inline-end:auto">ייבוא מסריקת רשת</button>
       <input type="file" id="import-file" accept=".json" hidden>
       <button type="button" id="btn-cancel">ביטול</button>
@@ -427,6 +428,14 @@ importFile.onchange = async () => {
   let msg = `נמצאו ${found.length} מצלמות, ${Math.min(fresh.length, empty.length)} נוספו.`;
   if (fresh.length > empty.length) msg += `\nלא נשאר מקום ל־${fresh.length - empty.length}: ` + fresh.slice(empty.length).map(c => c.ip).join(', ');
   alert(msg + '\nבדקו את הכתובות ולחצו "שמירה".');
+};
+
+// go2rtc רץ על המחשב הזה וממיר את זרמי המצלמות (cam1..cam4 ב־go2rtc.yaml) לנגן בדפדפן
+document.getElementById('btn-go2rtc').onclick = () => {
+  fields.querySelectorAll('fieldset').forEach((fs, i) => {
+    fs.querySelector('[name=url]').value = `http://localhost:1984/stream.html?src=cam${i + 1}&mode=mse`;
+    fs.querySelector('[name=type]').value = 'iframe';
+  });
 };
 
 document.getElementById('settings-form').addEventListener('submit', () => {
